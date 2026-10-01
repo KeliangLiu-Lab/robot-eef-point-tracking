@@ -1,0 +1,49 @@
+{
+  "release": "5.4.0",
+  "geometry_algorithm": "agx-eef-geometry-v5.4",
+  "visibility_algorithm": "calibrated-j6-flange-v5-dino-visible-v2",
+  "point_definition": "agilex-piper-j6-plus-visible-z56-v1",
+  "validated_result": {
+    "datasets": 5,
+    "episodes": 13622,
+    "frames": 12315388,
+    "complete_episodes": 13622,
+    "missing_episodes": 0,
+    "invalid_episodes": 0,
+    "visibility_episodes_recomputed": 12215,
+    "visibility_episodes_reused_after_identity_checks": 1407,
+    "agilex7000_visibility_distribution_review_flags": 55
+  },
+  "dino_visibility": {
+    "architecture": "DINOv2 ViT-B/14",
+    "stride_frames": 5,
+    "input_size": 392,
+    "batch_size": 64,
+    "feature_radius_tokens": 0,
+    "positive_prototypes": 6,
+    "negative_prototypes": 4,
+    "enter_margin": 0.2,
+    "exit_margin": 0.1,
+    "coordinate_refinement": false
+  },
+  "calibration_overrides": {
+    "1952": {
+      "version": "agilex7000-ep1952-e217-v1",
+      "sha256": "235ce5d85488d89ecfe8c6a3a068681d0f8fe62bcee9e38d6c89ba83d5eee6db"
+    },
+    "2829": {
+      "version": "agilex7000-ep2829-source44-eb-v1",
+      "sha256": "5823962ad17be49b45ea96ea3d6d42bef16dec80dc4239d9ab273f8c75a95949"
+    },
+    "11910-11969": {
+      "version": "agilex7000-hanging-shared-right-base-invariant-v1",
+      "sha256": "bb72a3b6a96ca211be997598e15bb1ff599c8a50c898a1ffa5a5a67f047b9738"
+    }
+  },
+  "excluded": [
+    "robot datasets and videos",
+    "DINOv2 source and model weights",
+    "historical SAM3-only point labels",
+    "Franka geometry-only experiment"
+  ]
+}
