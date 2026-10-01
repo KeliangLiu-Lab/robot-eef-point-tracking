@@ -149,19 +149,24 @@ coordinates, DINOv2 visibility, and end-to-end dataset generation.
 - The local DINOv2 repository and a compatible ViT-B/14 checkpoint
 - The five final LeRobot datasets and their original videos/calibration fields
 
-Install CPU-side dependencies in a clean environment:
+Create a clean environment:
 
 ```bash
 python -m venv .venv
 source .venv/bin/activate
 python -m pip install --upgrade pip
+```
+
+Install CUDA-enabled PyTorch and torchvision for your driver using the official
+instructions at https://pytorch.org/get-started/locally/. Then install the
+remaining dependencies:
+
+```bash
 python -m pip install -r requirements.txt
 ```
 
-Install the PyTorch build matching your CUDA driver using the official PyTorch
-installation instructions. Clone or otherwise provide a compatible local
-DINOv2 repository separately. This package deliberately does not vendor
-third-party model code or weights.
+Clone or otherwise provide a compatible local DINOv2 repository separately.
+This package deliberately does not vendor third-party model code or weights.
 
 The visibility code loads the `dinov2_vitb14` architecture from
 https://github.com/facebookresearch/dinov2 using a PyTorch state dictionary
@@ -265,14 +270,16 @@ directly on its manifest without `--require-complete`:
 
 ```bash
 python src/validate_labels.py \
-  --manifest outputs/flange_geometry/geometry_manifest.partial.jsonl \
+  --manifest outputs/flange_geometry/geometry_manifest.jsonl \
   --output-root outputs/eef_tracks \
   --report outputs/eef_tracks/subset_validation.json \
   --workers 4 --verify-sha256
 ```
 
-A partial geometry run writes `geometry_manifest.partial.jsonl` unless an
-explicit manifest path was requested.
+When `project_flange_geometry.py` filters a larger input manifest, it writes
+`geometry_manifest.partial.jsonl` instead; pass the actual generated manifest
+path to the validator. An explicit `--geometry-manifest` path also takes
+precedence.
 
 ## Review Preview
 
