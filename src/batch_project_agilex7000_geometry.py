@@ -54,7 +54,7 @@ DEFAULT_DATASET_ROOT = Path(
     )
 )
 DEFAULT_OUTPUT_PARENT = Path(
-    os.environ.get("EEF_GEOMETRY_OUTPUT_ROOT", "outputs/eef_tracks_calibrated_v2_geometry")
+    os.environ.get("EEF_GEOMETRY_OUTPUT_ROOT", "outputs/calibrated_geometry_inputs")
 )
 
 

@@ -37,6 +37,3 @@ The paper algorithm uses explicit transform directions:
 - $g_t^i$ is hard geometric validity for arm $i$ at frame $t$.
 - $z_t^i$ is appearance-confirmed visibility; $q_t^i\in\{0,1,2\}$ denotes
   invalid, visible, and geometrically in-frame but uncertain/occluded.
-
-The internal software release is called V5, but the paper-facing algorithm
-title intentionally omits the implementation version number.

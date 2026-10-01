@@ -1,21 +1,21 @@
-# Robot End-Effector Point Tracking V5
+# Calibrated Robot End-Effector Point Tracking
 
-Production-quality, calibration-driven 2D end-effector labels for the main
+Calibration-driven 2D end-effector labels for the main
 manipulation camera of five AgileX/Piper LeRobot datasets.
 
-**This repository packages the calibrated V5 pipeline. It does not package the
-legacy SAM3 mask-to-point tracker, ambiguous historical TCP experiments, user
-datasets, videos, robot URDF, DINOv2 source code, or model weights.** DINOv2 only
-gates visibility; it never moves the geometrically projected point.
+**This repository packages the calibrated labeling pipeline.** It does not
+include datasets, videos, robot URDF files, DINOv2 source code, or model
+weights. DINOv2 only gates visibility; it never moves the geometrically
+projected point.
 
-## Results This Release Reproduces
+## Reference Run
 
 The source run covered five datasets, 13,622 episodes, and 12,315,388 frames.
 The final validation completed all 13,622 episodes with zero missing or
-invalid outputs. The V5 DINOv2 stage inferred 12,215 episodes and reused 1,407
-previously verified outputs after checking their identities. Geometry and
-visibility totals are recorded in the original run summary; machine-local
-outputs and video assets are intentionally not bundled here.
+invalid outputs. The DINOv2 stage inferred 12,215 episodes and reused 1,407
+previously verified outputs after checking their identities. These totals
+describe the audited reference run; generated labels and video assets are not
+bundled here.
 
 The audited scope is:
 
@@ -76,6 +76,9 @@ The canonical J6 point and visible front-face candidate are intentionally
 separate. No unique TCP/contact point is claimed. The included
 `assets/physical_flange_evidence.json` records the topology audit. The source
 AGILEX URDF and its referenced meshes are external inputs and are not bundled.
+Internal `algorithm_version` and `schema_version` values in NPZ files and
+reports are compatibility identifiers for the audited data, not package
+release names.
 
 ### Reviewed Calibration Corrections
 
@@ -93,23 +96,22 @@ AGILEX URDF and its referenced meshes are external inputs and are not bundled.
 
 The per-episode override matrices, expected original signatures, and supporting
 evidence summaries are included under `configs/overrides/` and `assets/`. The
-release code checks that the input episode contains the expected original
+pipeline checks that the input episode contains the expected original
 calibration before applying an override. It never switches calibration per
 frame.
 
 ## Scope and Limitations
 
-- This is the tested AGX/Piper V5 pipeline. It does not include the Franka
-  geometry-only experiment. In particular, the current Franka insert-tube
-  projection has an unresolved pixel-alignment dispute and must not be treated
-  as a V5-quality release label.
+- The reviewed calibration and point definition apply only to the five listed
+  AgileX/Piper datasets. Other robots and cameras require their own point
+  definition, calibration review, and validation.
 - Fifty-five AgileX7000 episodes were flagged by visibility-distribution
   auditing for review. A flagged episode is not automatically invalid, but
   users should inspect these cases for their application.
 - DINO visibility is appearance evidence, not a physical occlusion sensor.
-- The V5 visual front-face point is medium-confidence and does not replace the
+- The visual front-face point is medium-confidence and does not replace the
   robot's canonical J6 state.
-- The published statistics describe the exact audited source release. If data,
+- The published statistics describe the exact audited source run. If data,
   videos, calibration metadata, preprocessing, or DINO prototypes change, run
   the complete validation again and do not assume the same accuracy.
 
@@ -120,21 +122,21 @@ src/
   batch_project_agx_geometry.py          AGX mobile/ordered calibrated geometry
   batch_project_agilex7000_geometry.py   AgileX7000 calibrated geometry
   backfill_agilex7000_shared_geometry.py validated 60-episode shared-E backfill
-  upgrade_geometry_v5.py                 final J6/flange semantic geometry stage
-  dino_visibility_filter.py               DINOv2 feature scorer and filters
-  dino_eef_visibility_batch.py            sharded, resumable visibility stage
-  validate_v5.py                          full output and provenance validation
-  render_preview.py                       H.264/yuv420p review video renderer
+  project_flange_geometry.py             final J6/flange semantic geometry stage
+  dino_visibility_filter.py             DINOv2 feature scorer and filters
+  dino_eef_visibility_batch.py          sharded, resumable visibility stage
+  validate_labels.py                     full output and provenance validation
+  render_preview.py                     H.264/yuv420p review video renderer
 configs/
-  calibration_template/                    reviewed camera K/E calibration inputs
-  overrides/                               three narrow, evidence-backed overrides
-  dino_prototypes.json                     V5 positive and negative reference points
+  calibration_template/                 reviewed camera K/E calibration inputs
+  overrides/                            three narrow, evidence-backed overrides
+  dino_prototypes.json                  positive and negative reference points
 assets/                                     portable calibration/point evidence
-tests/                                      geometry and V5 behavior tests
+tests/                                      geometry and visibility behavior tests
 scripts/                                   end-to-end stage launchers
 ```
 
-The LaTeX pseudocode is in `docs/ALGORITHM_V5.tex`, and an English method
+The LaTeX pseudocode is in `docs/ALGORITHMS.tex`, and an English method
 summary is in `docs/METHOD_DESCRIPTION.md`. The algorithms cover calibrated
 coordinates, DINOv2 visibility, and end-to-end dataset generation.
 
@@ -160,6 +162,14 @@ Install the PyTorch build matching your CUDA driver using the official PyTorch
 installation instructions. Clone or otherwise provide a compatible local
 DINOv2 repository separately. This package deliberately does not vendor
 third-party model code or weights.
+
+The visibility code loads the `dinov2_vitb14` architecture from
+https://github.com/facebookresearch/dinov2 using a PyTorch state dictionary
+(or a checkpoint with a `model` entry). The checkpoint must match that
+architecture exactly. Before inference, verify that every entry in
+`configs/dino_prototypes.json` points to an available source video and a
+reviewed flange location in original-image pixels. Re-review these prototypes
+when changing cameras or robot appearance.
 
 ## Input Data Contract
 
@@ -192,7 +202,7 @@ default and are excluded by `.gitignore`.
 
 ```bash
 export EEF_DATA_ROOT=/path/to/lerobot
-export PYTHON=/path/to/python
+export PYTHON=python
 export WORKERS=24
 bash scripts/run_geometry.sh
 ```
@@ -202,14 +212,14 @@ The geometry runner performs, in order:
 1. AGX mobile/ordered projection using the included calibration registry.
 2. AgileX7000 projection from its per-episode calibration metadata.
 3. The validated shared calibration backfill for episodes 11910-11969.
-4. V5 reprojection, point-semantic upgrade, and the two episode-level
+4. Flange-face reprojection and the two episode-level
    calibration corrections.
 
 Review the geometry-only projections before starting visibility inference.
-The V5 geometry root defaults to:
+The final geometry root defaults to:
 
 ```text
-outputs/eef_tracks_calibrated_v5_geometry_final
+outputs/flange_geometry
 ```
 
 Run the DINOv2 visibility stage on the selected GPU IDs:
@@ -217,26 +227,31 @@ Run the DINOv2 visibility stage on the selected GPU IDs:
 ```bash
 python scripts/run_visibility.py \
   --data-root "$EEF_DATA_ROOT" \
-  --manifest outputs/eef_tracks_calibrated_v5_geometry_final/geometry_manifest.jsonl \
-  --geometry-root outputs/eef_tracks_calibrated_v5_geometry_final \
-  --output-root outputs/eef_tracks_calibrated_v5 \
+  --manifest outputs/flange_geometry/geometry_manifest.jsonl \
+  --geometry-root outputs/flange_geometry \
+  --output-root outputs/eef_tracks \
   --dinov2-repo /path/to/dinov2 \
   --checkpoint /path/to/dinov2_vitb14_pretrain.pth \
-  --devices 0,1,2,3,4,5,6,7 \
-  --workers-per-device 3 \
-  --batch-size 64
+  --devices 0 \
+  --workers-per-device 1 \
+  --batch-size 16
 ```
+
+This example uses one GPU. For more throughput, list several GPU IDs with
+`--devices`, then increase `--workers-per-device` and `--batch-size` only
+as GPU memory permits. Prototype videos must be available under the data root
+on every worker.
 
 Each DINO process handles a deterministic manifest shard. It resumes only
 outputs whose geometry, target video, prototype videos, code, checkpoint, and
 fusion configuration identities match. Logs and JSONL events are written
-under `outputs/eef_tracks_calibrated_v5/logs/`.
+under `outputs/eef_tracks/logs/`.
 
 Validate the complete result:
 
 ```bash
-EEF_V5_GEOMETRY_ROOT=outputs/eef_tracks_calibrated_v5_geometry_final \
-EEF_FINAL_ROOT=outputs/eef_tracks_calibrated_v5 \
+EEF_FLANGE_GEOMETRY_ROOT=outputs/flange_geometry \
+EEF_FINAL_ROOT=outputs/eef_tracks \
 bash scripts/run_validation.sh
 ```
 
@@ -244,6 +259,20 @@ The validator checks the complete manifest, schema, point contract, frame
 counts, operation/FOV/visibility masks, output digests, video fingerprints,
 geometry identities, and calibration override provenance. A successful exit
 with `--require-complete` is required before treating a run as complete.
+The supplied validation launcher enforces the exact five-dataset episode
+counts listed above; for a trial or subset, call `src/validate_labels.py`
+directly on its manifest without `--require-complete`:
+
+```bash
+python src/validate_labels.py \
+  --manifest outputs/flange_geometry/geometry_manifest.partial.jsonl \
+  --output-root outputs/eef_tracks \
+  --report outputs/eef_tracks/subset_validation.json \
+  --workers 4 --verify-sha256
+```
+
+A partial geometry run writes `geometry_manifest.partial.jsonl` unless an
+explicit manifest path was requested.
 
 ## Review Preview
 
@@ -253,8 +282,8 @@ players:
 ```bash
 bash scripts/render_preview.sh \
   /path/to/main_view.mp4 \
-  outputs/eef_tracks_calibrated_v5/DATASET/chunk-000/episode_000000.npz \
-  /tmp/episode_000000_v5.mp4 \
+  outputs/eef_tracks/DATASET/chunk-000/episode_000000.npz \
+  /tmp/episode_000000_preview.mp4 \
   2
 ```
 
@@ -282,7 +311,9 @@ visible_coordinate_mask = in_operation_fov & visible
 
 Use `track_xy_geom` for target coordinates and an explicit mask for the loss.
 Do not pass `track_xy` directly into a regression loss because it contains NaNs
-for invisible points. If training images are resized, cropped, or assembled into
+for invisible points. The `quality` array is 0 for invalid, 1 for
+visible, and 2 for in-frame but uncertain or occluded points. If training
+images are resized, cropped, or assembled into
 a mosaic, apply exactly the same transform to the coordinates before
 normalizing them.
 

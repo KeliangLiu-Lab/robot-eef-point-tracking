@@ -7,9 +7,9 @@ cd "$PACKAGE_ROOT"
 PYTHON="${PYTHON:-python}"
 DATA_ROOT="${EEF_DATA_ROOT:-$PACKAGE_ROOT/data/lerobot}"
 CALIBRATION_ROOT="${EEF_CALIBRATION_ROOT:-$PACKAGE_ROOT/configs/calibration_template}"
-GEOMETRY_ROOT="${EEF_GEOMETRY_ROOT:-$PACKAGE_ROOT/outputs/eef_tracks_calibrated_v5_geometry}"
-V5_GEOMETRY_ROOT="${EEF_V5_GEOMETRY_ROOT:-$PACKAGE_ROOT/outputs/eef_tracks_calibrated_v5_geometry_final}"
-FINAL_ROOT="${EEF_FINAL_ROOT:-$PACKAGE_ROOT/outputs/eef_tracks_calibrated_v5}"
+GEOMETRY_ROOT="${EEF_GEOMETRY_ROOT:-$PACKAGE_ROOT/outputs/calibrated_geometry_inputs}"
+FLANGE_GEOMETRY_ROOT="${EEF_FLANGE_GEOMETRY_ROOT:-$PACKAGE_ROOT/outputs/flange_geometry}"
+FINAL_ROOT="${EEF_FINAL_ROOT:-$PACKAGE_ROOT/outputs/eef_tracks}"
 AGILEX_DATASET="agilex7000_manip_short30_rot6d_rowmajor_h32_v4_prompt_reviewed"
 WORKERS="${WORKERS:-16}"
 
@@ -36,13 +36,13 @@ EEF_GEOMETRY_OUTPUT_ROOT="$GEOMETRY_ROOT" \
   --workers "${BACKFILL_WORKERS:-8}" \
   --publish-manifest
 
-"$PYTHON" src/upgrade_geometry_v5.py \
+"$PYTHON" src/project_flange_geometry.py \
   --input-root "$GEOMETRY_ROOT" \
-  --output-root "$V5_GEOMETRY_ROOT" \
+  --output-root "$FLANGE_GEOMETRY_ROOT" \
   --final-root "$FINAL_ROOT" \
   --override configs/overrides/agilex7000_ep1952_e217.json \
   --override configs/overrides/agilex7000_ep2829_source44.json \
   --workers "$WORKERS"
 
-echo "Geometry stage complete: $V5_GEOMETRY_ROOT"
+echo "Geometry stage complete: $FLANGE_GEOMETRY_ROOT"
 echo "Next: run scripts/run_visibility.py with your DINOv2 repo/checkpoint."

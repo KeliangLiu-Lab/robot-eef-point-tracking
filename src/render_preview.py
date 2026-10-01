@@ -27,7 +27,7 @@ def parse_args() -> argparse.Namespace:
         "--primary",
         choices=("track", "eef", "legacy"),
         default="track",
-        help="Point family to render; V5 defaults to the visible flange-face track.",
+        help="Point family to render; the visible flange-face track is the default.",
     )
     parser.add_argument(
         "--show-j6-reference",

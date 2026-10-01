@@ -11,10 +11,10 @@ sys.path.insert(0, str(ROOT / "src"))
 
 from agx_calibration_registry import CalibrationRegistry
 from backfill_agilex7000_shared_geometry import load_override as load_shared_override
-from upgrade_geometry_v5 import load_override as load_v5_overrides
+from project_flange_geometry import load_override as load_point_overrides
 
 
-class ReleaseBundleTest(unittest.TestCase):
+class PackageTest(unittest.TestCase):
     def test_bundled_calibration_registry_loads_reviewed_profiles(self) -> None:
         registry = CalibrationRegistry()
         self.assertEqual(
@@ -37,7 +37,7 @@ class ReleaseBundleTest(unittest.TestCase):
         }
         loaded = {}
         for path in sorted((ROOT / "configs/overrides").glob("agilex7000_ep*.json")):
-            loaded.update(load_v5_overrides(path))
+            loaded.update(load_point_overrides(path))
         self.assertEqual(len(loaded), 2)
         for episode, version in expected.items():
             payload = loaded[("agilex7000_manip_short30_rot6d_rowmajor_h32_v4_prompt_reviewed", episode)]

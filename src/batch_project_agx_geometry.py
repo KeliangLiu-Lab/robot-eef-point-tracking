@@ -694,12 +694,12 @@ def main() -> int:
     parser.add_argument(
         "--output-root",
         type=Path,
-        default=Path("outputs/eef_tracks_calibrated_v2_geometry"),
+        default=Path("outputs/calibrated_geometry_inputs"),
     )
     parser.add_argument(
         "--final-output-root",
         type=Path,
-        default=Path("outputs/eef_tracks_calibrated_v2"),
+        default=Path("outputs/eef_tracks"),
         help="Suggested downstream DINO-filter output root recorded in the manifest.",
     )
     parser.add_argument(

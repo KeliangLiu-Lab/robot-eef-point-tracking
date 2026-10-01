@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate every V5 preferred-flange geometry/visibility output pair."""
+"""Validate every preferred-flange geometry and visibility output pair."""
 
 from __future__ import annotations
 
@@ -334,7 +334,7 @@ def validate_one(task: tuple[dict[str, Any], str, bool]) -> dict[str, Any]:
                         f"override {actual_override!r} != {expected_version!r}"
                     )
                 if actual_override_sha != expected_sha:
-                    errors.append("V5 override SHA-256 mismatch")
+                    errors.append("override SHA-256 mismatch")
             canonical_override = str(
                 archive["calibration_override_version"].item()
             )

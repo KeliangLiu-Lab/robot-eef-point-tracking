@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """Re-project calibrated main-view tracks with explicit flange semantics.
 
-V4 geometry is intentionally left untouched.  This upgrader reads the final
-Cartesian state again, keeps the validated calibration matrices, and writes a
-new version with the official J6 frame, a topology-backed visible flange-face
+The upstream geometry is intentionally left untouched. This stage reads the final
+Cartesian state again, keeps the validated calibration matrices, and writes an
+output with the canonical J6 frame, a topology-backed visible flange-face
 candidate, and the old diagnostic auxiliary point. It also supports
 narrowly-scoped, evidence-backed calibration
-overrides (currently the isolated AgileX7000 episode 1952 camera outlier).
+overrides for reviewed AgileX7000 camera outliers.
 
 The script is CPU-only and therefore does not compete with DINO/SAM jobs for
 GPU memory.  A manifest is written only after every selected episode has an
@@ -40,7 +40,7 @@ POINT_DEFINITION_VERSION = "agilex-piper-j6-plus-visible-z56-v1"
 # joint FK agrees with logged XYZ at sub-millimetre scale. The custom AGILEX
 # mesh does not establish a unique physical surface-center offset from J6.
 # The old +Z 135.03 mm point is retained only as an explicitly non-canonical
-# auxiliary coordinate; it is not called TCP/contact/flange in V5.
+# auxiliary coordinate; it is not called TCP, contact point, or flange.
 LEGACY_AUX_OFFSET = np.asarray([0.0, 0.0, 0.13503], dtype=np.float64)
 VISUAL_FLANGE_FACE_OFFSET = np.asarray([0.0, 0.0, 0.056], dtype=np.float64)
 VISUAL_FLANGE_EVIDENCE = (
@@ -414,7 +414,7 @@ def geometry_for_agilex(states: np.ndarray, arrays: dict[str, np.ndarray], width
     )
 
 
-def geometry_from_v4_points(
+def geometry_from_input_points(
     arrays: dict[str, np.ndarray],
     intrinsic: np.ndarray,
     base_to_camera: np.ndarray,
@@ -422,7 +422,7 @@ def geometry_from_v4_points(
     width: int,
     height: int,
 ) -> dict[str, np.ndarray]:
-    """Upgrade V4's stored 3D points without reopening the state parquet."""
+    """Reuse the upstream stored 3D points without reopening the state parquet."""
     if "flange_footprint" in arrays and "grasp_center_footprint" in arrays:
         flange = np.asarray(arrays["flange_footprint"], dtype=np.float64)
         legacy_aux = np.asarray(
@@ -446,10 +446,10 @@ def geometry_from_v4_points(
                     effective_right_to_left, local_right
                 )
     else:
-        raise KeyError("V4 geometry has no reusable 3D flange/auxiliary point pair")
+        raise KeyError("upstream geometry has no reusable 3D flange/auxiliary point pair")
     if flange.shape != legacy_aux.shape or flange.ndim != 3:
         raise ValueError(
-            f"invalid reusable V4 point shapes: {flange.shape}, {legacy_aux.shape}"
+            f"invalid reusable input point shapes: {flange.shape}, {legacy_aux.shape}"
         )
     ratio = float(VISUAL_FLANGE_FACE_OFFSET[2] / LEGACY_AUX_OFFSET[2])
     visual_flange = flange + ratio * (legacy_aux - flange)
@@ -498,7 +498,7 @@ def make_projected_arrays(
         "eef_footprint": flange.astype(np.float32),
         "track_footprint": visual_flange.astype(np.float32),
         "visual_flange_face_candidate_footprint": visual_flange.astype(np.float32),
-        # Explicit non-canonical compatibility point used by V4.
+        # Explicit non-canonical compatibility point used by upstream geometry.
         "legacy_aux_footprint": legacy_aux.astype(np.float32),
         "legacy_grasp_center_footprint": legacy_aux.astype(np.float32),
         "flange_xy_geom": flange_xy,
@@ -557,7 +557,7 @@ def process_entry(task: dict[str, Any]) -> dict[str, Any]:
     output_root = Path(task["output_root"])
     final_root = Path(task["final_root"])
     overrides = task.get("overrides", {})
-    reuse_v4_points = bool(task.get("reuse_v4_points", False))
+    reuse_input_points = bool(task.get("reuse_input_points", False))
     dataset = str(entry["dataset"])
     episode = int(entry["episode_index"])
     geometry_in = Path(entry["geometry_npz"])
@@ -575,7 +575,7 @@ def process_entry(task: dict[str, Any]) -> dict[str, Any]:
         states = read_state(state_path)
         frame_count = len(states)
         if frame_count != len(old["frame_index"]):
-            raise ValueError("final state/V4 geometry frame-count mismatch")
+            raise ValueError("final state/upstream geometry frame-count mismatch")
         width, height = np.asarray(old["image_size"], dtype=int).tolist()
         video_frames, video_width, video_height = video_size(Path(entry["video"]))
         if (video_frames, video_width, video_height) != (frame_count, width, height):
@@ -585,7 +585,7 @@ def process_entry(task: dict[str, Any]) -> dict[str, Any]:
                 f"state/geometry={(frame_count, width, height)}"
             )
         if int(entry.get("frame_count", frame_count)) != frame_count:
-            raise ValueError("manifest/V4 geometry frame-count mismatch")
+            raise ValueError("manifest/upstream geometry frame-count mismatch")
         state_dimension = int(states.shape[1])
         override = overrides.get((dataset, episode))
         K = np.asarray(old["intrinsic"], dtype=np.float64)
@@ -623,12 +623,12 @@ def process_entry(task: dict[str, Any]) -> dict[str, Any]:
                     raise ValueError("override target source parquet fingerprint changed")
                 expected = np.asarray(override.get("expected_original_camera_to_left_base", []), dtype=np.float64)
                 if expected.shape == (4, 4) and not np.allclose(camera_to_left, expected, atol=2e-6, rtol=0):
-                    raise ValueError("ep1952 override original E does not match the V4 source geometry")
+                    raise ValueError("ep1952 override original E does not match the upstream source geometry")
                 expected_k = np.asarray(
                     override.get("expected_intrinsic", []), dtype=np.float64
                 )
                 if expected_k.shape == (3, 3) and not np.array_equal(K, expected_k):
-                    raise ValueError("override expected target K does not match V4 geometry")
+                    raise ValueError("override expected target K does not match upstream geometry")
                 if not np.array_equal(K, override["_replacement_intrinsic"]):
                     raise ValueError("override requires retaining K but replacement K differs")
                 expected_b = np.asarray(
@@ -638,7 +638,7 @@ def process_entry(task: dict[str, Any]) -> dict[str, Any]:
                 if expected_b.shape == (4, 4) and not np.array_equal(
                     original_B, expected_b
                 ):
-                    raise ValueError("override expected target B does not match V4 geometry")
+                    raise ValueError("override expected target B does not match upstream geometry")
                 target_matrix_sha = override["target_matrix_sha256"]
                 target_values = {
                     "camera_intrinsics.camera_front": K,
@@ -656,8 +656,8 @@ def process_entry(task: dict[str, Any]) -> dict[str, Any]:
                     effective_B = np.asarray(
                         override["_right_to_left"], dtype=np.float64
                     )
-        if reuse_v4_points:
-            geometry = geometry_from_v4_points(
+        if reuse_input_points:
+            geometry = geometry_from_input_points(
                 old, K, E, effective_B, width, height
             )
         elif is_agx:
@@ -670,7 +670,7 @@ def process_entry(task: dict[str, Any]) -> dict[str, Any]:
                 states, state_geometry_inputs, width, height, E
             )
 
-        # Do not carry V4's ambiguous ``tcp/grasp_center`` names into V5. The
+        # Do not carry ambiguous ``tcp/grasp_center`` names into the output. The
         # corresponding +Z 135.03 mm arrays are re-emitted only under explicit
         # ``legacy_aux`` names below.
         dropped_prefixes = ("tcp_", "grasp_center_")
@@ -903,7 +903,7 @@ def read_entries(paths: list[Path]) -> list[dict[str, Any]]:
             key = (str(row["dataset"]), int(row["episode_index"]))
             if key in result:
                 raise ValueError(f"duplicate manifest entry {key}")
-            # V4 AgileX manifest rows lack an operation_start but are all
+            # Upstream AgileX manifest rows lack an operation_start but are all
             # manipulation frames; the old geometry NPZ carries the mask.
             result[key] = row
     return [result[key] for key in sorted(result)]
@@ -922,7 +922,7 @@ def parse_episode_filter(values: list[str] | None) -> set[int] | None:
     return selected
 
 
-def reusable_v5_output(
+def reusable_output(
     entry: dict[str, Any],
     output: Path,
     report_path: Path,
@@ -971,16 +971,16 @@ def reusable_v5_output(
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--input-root", type=Path, default=Path("outputs/eef_tracks_calibrated_v2_geometry"))
-    parser.add_argument("--output-root", type=Path, default=Path("outputs/eef_tracks_calibrated_v5_geometry"))
-    parser.add_argument("--final-root", type=Path, default=Path("outputs/eef_tracks_calibrated_v5"))
+    parser.add_argument("--input-root", type=Path, default=Path("outputs/calibrated_geometry_inputs"))
+    parser.add_argument("--output-root", type=Path, default=Path("outputs/flange_geometry"))
+    parser.add_argument("--final-root", type=Path, default=Path("outputs/eef_tracks"))
     parser.add_argument("--agilex-dataset", default="agilex7000_manip_short30_rot6d_rowmajor_h32_v4_prompt_reviewed")
     parser.add_argument("--override", type=Path, action="append", default=[])
     parser.add_argument("--episode", action="append")
     parser.add_argument("--workers", type=int, default=16)
     parser.add_argument("--overwrite", action="store_true")
     parser.add_argument(
-        "--reuse-v4-points",
+        "--reuse-input-points",
         action="store_true",
         help="Fast diagnostic path; production defaults to recomputing final state.",
     )
@@ -1030,7 +1030,7 @@ def main() -> int:
         out = output_path(output_root, str(entry["dataset"]), int(entry["episode_index"]), ".npz")
         rep = output_path(output_root, str(entry["dataset"]), int(entry["episode_index"]), ".report.json")
         override = overrides.get((str(entry["dataset"]), int(entry["episode_index"])))
-        if not args.overwrite and reusable_v5_output(entry, out, rep, override):
+        if not args.overwrite and reusable_output(entry, out, rep, override):
             resumed += 1
             continue
         tasks.append({
@@ -1039,7 +1039,7 @@ def main() -> int:
             "output_root": str(output_root),
             "final_root": str(final_root),
             "overrides": overrides,
-            "reuse_v4_points": args.reuse_v4_points,
+            "reuse_input_points": args.reuse_input_points,
         })
     print(json.dumps({"algorithm_version": ALGORITHM_VERSION, "selected": len(entries), "resumed": resumed, "queued": len(tasks), "workers": args.workers}, ensure_ascii=False), flush=True)
     results: list[dict[str, Any]] = []

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Appearance-gate the preferred flange track in a V5 geometry manifest."""
+"""Appearance-gate the preferred flange track in a geometry manifest."""
 
 from __future__ import annotations
 

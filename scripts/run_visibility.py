@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run the reviewed V5 DINOv2 visibility gate across GPU shards."""
+"""Run DINOv2 visibility gating across GPU shards."""
 
 from __future__ import annotations
 
@@ -30,10 +30,10 @@ def main() -> int:
     parser.add_argument("--data-root", type=Path, default=Path("data/lerobot"))
     parser.add_argument(
         "--manifest", type=Path,
-        default=Path("outputs/eef_tracks_calibrated_v5_geometry_final/geometry_manifest.jsonl"),
+        default=Path("outputs/flange_geometry/geometry_manifest.jsonl"),
     )
-    parser.add_argument("--geometry-root", type=Path, default=Path("outputs/eef_tracks_calibrated_v5_geometry_final"))
-    parser.add_argument("--output-root", type=Path, default=Path("outputs/eef_tracks_calibrated_v5"))
+    parser.add_argument("--geometry-root", type=Path, default=Path("outputs/flange_geometry"))
+    parser.add_argument("--output-root", type=Path, default=Path("outputs/eef_tracks"))
     parser.add_argument("--dinov2-repo", type=Path, required=True)
     parser.add_argument("--checkpoint", type=Path, required=True)
     parser.add_argument("--prototypes", type=Path, default=Path("configs/dino_prototypes.json"))

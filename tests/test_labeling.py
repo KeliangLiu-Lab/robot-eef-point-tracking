@@ -7,14 +7,14 @@ import unittest
 import numpy as np
 
 from dino_visibility_filter import interpolate_scores, morphology_visibility
-from upgrade_geometry_v5 import (
+from project_flange_geometry import (
     LEGACY_AUX_OFFSET,
     VISUAL_FLANGE_FACE_OFFSET,
-    geometry_from_v4_points,
+    geometry_from_input_points,
 )
 
 
-class V5GeometryTest(unittest.TestCase):
+class FlangeGeometryTest(unittest.TestCase):
     def calibration(self) -> tuple[np.ndarray, np.ndarray]:
         intrinsic = np.asarray(
             [[100.0, 0.0, 50.0], [0.0, 100.0, 40.0], [0.0, 0.0, 1.0]]
@@ -32,7 +32,7 @@ class V5GeometryTest(unittest.TestCase):
             "operation_range": np.asarray([0, 0], np.int32),
         }
         intrinsic, extrinsic = self.calibration()
-        geometry = geometry_from_v4_points(
+        geometry = geometry_from_input_points(
             arrays, intrinsic, extrinsic, np.eye(4), 100, 80
         )
         np.testing.assert_allclose(
@@ -68,7 +68,7 @@ class V5GeometryTest(unittest.TestCase):
             "operation_range": np.asarray([0, 0], np.int32),
         }
         intrinsic, extrinsic = self.calibration()
-        geometry = geometry_from_v4_points(
+        geometry = geometry_from_input_points(
             arrays, intrinsic, extrinsic, replacement_b, 100, 80
         )
         np.testing.assert_allclose(
