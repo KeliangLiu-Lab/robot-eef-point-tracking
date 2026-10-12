@@ -139,6 +139,11 @@ camera, provide the following in a geometry adapter:
    transform. Project the 3D point only when depth is positive; mark points
    outside the image invalid.
 
+For each frame and arm, the projection is
+`p_camera = T_camera_base @ T_base_eef @ [point_eef, 1]`, followed by
+`pixel = (K @ p_camera[:3])[:2] / p_camera[2]`. Use the original video width
+and height for the image-bound check.
+
 Write one geometry NPZ with `algorithm_version`, `track_xy_geom` of shape
 `[T, A, 2]`, `track_geometric_in_fov` of shape `[T, A]`, and
 `operation_mask` of shape `[T]`. Write a JSONL manifest inside the geometry
@@ -159,11 +164,23 @@ or relative to `--data-root`:
 }
 ```
 
-Run `scripts/run_visibility.py` with `--prototypes /path/to/prototypes.json`
-and your manifest, geometry root, DINOv2 checkout, and checkpoint. Its output
-uses the same label arrays described above. The included full-dataset
-validation launcher checks the included adapter's metadata; add
-adapter-specific checks for a new robot.
+Run visibility on the new geometry:
+
+```bash
+python3 scripts/run_visibility.py \
+  --data-root /absolute/path/to/data \
+  --manifest /absolute/path/to/geometry/geometry_manifest.jsonl \
+  --geometry-root /absolute/path/to/geometry \
+  --output-root /absolute/path/to/eef_tracks \
+  --prototypes /absolute/path/to/prototypes.json \
+  --dinov2-repo /absolute/path/to/dinov2 \
+  --checkpoint /absolute/path/to/dinov2_vitb14_pretrain.pth \
+  --devices 0 --workers-per-device 1 --batch-size 16
+```
+
+Its output uses the same label arrays described above. The included
+full-dataset validation launcher checks the included adapter's metadata;
+add adapter-specific checks for a new robot.
 
 ## Troubleshooting
 
