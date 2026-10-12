@@ -199,11 +199,21 @@ class DINOVisibilityScorer:
         stride: int,
     ) -> tuple[np.ndarray, np.ndarray, float]:
         """Return sampled scores with shape [point_set, sample, arm]."""
-        frame_count = len(point_specs[0][0])
+        if not point_specs:
+            raise ValueError("at least one point set is required")
+        first_points = point_specs[0][0]
+        if first_points.ndim != 3 or first_points.shape[1] < 1 or first_points.shape[2] != 2:
+            raise ValueError(f"expected points [T,A,2] with A >= 1, got {first_points.shape}")
+        frame_count, arm_count = first_points.shape[:2]
+        for points_xy, in_fov, _ in point_specs:
+            if points_xy.shape != (frame_count, arm_count, 2):
+                raise ValueError(f"expected points [T,{arm_count},2], got {points_xy.shape}")
+            if in_fov.shape != (frame_count, arm_count):
+                raise ValueError(f"expected FOV mask [T,{arm_count}], got {in_fov.shape}")
         sample_indices = np.arange(0, frame_count, stride, dtype=np.int32)
         frames = read_selected_frames(video_path, sample_indices)
         sampled_scores = np.full(
-            (len(point_specs), len(sample_indices), 2), np.nan, dtype=np.float32
+            (len(point_specs), len(sample_indices), arm_count), np.nan, dtype=np.float32
         )
         started = time.time()
         for batch_start in range(0, len(frames), self.batch_size):
@@ -215,7 +225,7 @@ class DINOVisibilityScorer:
             ):
                 image_height, image_width = batch_frames[local_index].shape[:2]
                 for set_index, (points_xy, in_fov, templates) in enumerate(point_specs):
-                    for arm in range(2):
+                    for arm in range(arm_count):
                         if (
                             not in_fov[frame_index, arm]
                             or not np.isfinite(points_xy[frame_index, arm]).all()
@@ -257,8 +267,9 @@ def interpolate_scores(
     sampled_scores: np.ndarray,
     geometric_in_fov: np.ndarray,
 ) -> np.ndarray:
-    scores = np.full((frame_count, 2), np.nan, dtype=np.float32)
-    for arm in range(2):
+    arm_count = geometric_in_fov.shape[1]
+    scores = np.full((frame_count, arm_count), np.nan, dtype=np.float32)
+    for arm in range(arm_count):
         in_fov = np.asarray(geometric_in_fov[:, arm], dtype=bool)
         index = 0
         while index < frame_count:
@@ -299,7 +310,7 @@ def hysteresis_visibility(
     exit_threshold: float,
 ) -> np.ndarray:
     visible = np.zeros_like(geometric_in_fov, dtype=bool)
-    for arm in range(2):
+    for arm in range(geometric_in_fov.shape[1]):
         active = False
         for frame_index in range(len(scores)):
             if not geometric_in_fov[frame_index, arm] or not np.isfinite(scores[frame_index, arm]):

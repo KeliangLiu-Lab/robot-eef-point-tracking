@@ -66,15 +66,25 @@ def main() -> int:
     else:
         primary = first_present(tracks, "legacy_aux_xy")
         point_label = "LEGACY"
-    j6_reference = first_present(
-        tracks, "eef_xy", "j6_origin_xy", "flange_xy"
+    if primary.ndim != 3 or primary.shape[1] < 1 or primary.shape[2] != 2:
+        raise ValueError(f"expected point coordinates [T,A,2] with A >= 1, got {primary.shape}")
+    j6_reference = (
+        first_present(tracks, "eef_xy", "j6_origin_xy", "flange_xy")
+        if args.show_j6_reference
+        and any(key in tracks.files for key in ("eef_xy", "j6_origin_xy", "flange_xy"))
+        else None
     )
     quality = (
         tracks["quality"]
         if args.primary == "track" and "quality" in tracks.files
         else np.isfinite(primary).all(axis=2).astype(np.uint8)
     )
-    operation_start, operation_end = tracks["operation_range"].tolist()
+    if "operation_range" in tracks.files:
+        operation_start, operation_end = tracks["operation_range"].tolist()
+    else:
+        operation_frames = np.flatnonzero(tracks["operation_mask"])
+        operation_start = int(operation_frames[0]) if len(operation_frames) else len(primary)
+        operation_end = int(operation_frames[-1]) if len(operation_frames) else -1
     cap = cv2.VideoCapture(str(args.video))
     if not cap.isOpened():
         raise FileNotFoundError(args.video)
@@ -105,8 +115,9 @@ def main() -> int:
     if not writer.isOpened():
         cap.release()
         raise RuntimeError(f"could not open temporary video writer: {temporary}")
-    colors = ((80, 220, 80), (80, 120, 255))
-    trails = [deque(maxlen=args.trail), deque(maxlen=args.trail)]
+    colors = ((80, 220, 80), (80, 120, 255), (220, 180, 80), (200, 100, 200))
+    arm_count = primary.shape[1]
+    trails = [deque(maxlen=args.trail) for _ in range(arm_count)]
     frame_index = 0
     while True:
         ok, frame = cap.read()
@@ -114,7 +125,7 @@ def main() -> int:
             break
         if frame_index >= len(primary):
             break
-        for arm in range(2):
+        for arm in range(arm_count):
             point = primary[frame_index, arm]
             if finite_point(point):
                 trails[arm].append(tuple(np.rint(point).astype(int)))
@@ -125,7 +136,8 @@ def main() -> int:
                 overlay = np.zeros_like(frame)
                 frame = cv2.addWeighted(frame, 0.35, overlay, 0.65, 0)
                 cv2.putText(frame, "navigation/excluded", (12, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (200, 200, 200), 2)
-            for arm, color in enumerate(colors):
+            for arm in range(arm_count):
+                color = colors[arm % len(colors)]
                 previous = None
                 for point in trails[arm]:
                     if point is None:
@@ -135,7 +147,7 @@ def main() -> int:
                         cv2.line(frame, previous, point, color, 2, cv2.LINE_AA)
                     previous = point
                 primary_point = primary[frame_index, arm]
-                if args.show_j6_reference:
+                if j6_reference is not None:
                     reference_point = j6_reference[frame_index, arm]
                     if finite_point(reference_point):
                         rp = tuple(np.rint(reference_point).astype(int))
@@ -145,7 +157,13 @@ def main() -> int:
                 if finite_point(primary_point):
                     tp = tuple(np.rint(primary_point).astype(int))
                     cv2.circle(frame, tp, 5, color, -1, cv2.LINE_AA)
-                    label = f"{'L' if arm == 0 else 'R'} {point_label}"
+                    if arm_count == 1:
+                        arm_label = "EEF"
+                    elif arm_count == 2:
+                        arm_label = ("L", "R")[arm]
+                    else:
+                        arm_label = f"EEF{arm + 1}"
+                    label = f"{arm_label} {point_label}"
                     if args.primary == "track":
                         label += f" q={int(quality[frame_index, arm])}"
                     cv2.putText(frame, label, (tp[0] + 7, max(16, tp[1] - 7)), cv2.FONT_HERSHEY_SIMPLEX, 0.45, color, 2, cv2.LINE_AA)

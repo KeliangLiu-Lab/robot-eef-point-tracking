@@ -11,5 +11,5 @@ VIDEO="$1"
 TRACKS="$2"
 OUTPUT="$3"
 STRIDE="${4:-2}"
-"${PYTHON:-python}" src/render_preview.py --video "$VIDEO" --tracks "$TRACKS" \
+"${PYTHON:-python3}" src/render_preview.py --video "$VIDEO" --tracks "$TRACKS" \
   --output "$OUTPUT" --stride "$STRIDE" --show-j6-reference

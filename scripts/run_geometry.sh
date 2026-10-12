@@ -4,7 +4,7 @@ set -euo pipefail
 PACKAGE_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$PACKAGE_ROOT"
 
-PYTHON="${PYTHON:-python}"
+PYTHON="${PYTHON:-python3}"
 DATA_ROOT="${EEF_DATA_ROOT:-$PACKAGE_ROOT/data/lerobot}"
 CALIBRATION_ROOT="${EEF_CALIBRATION_ROOT:-$PACKAGE_ROOT/configs/calibration_template}"
 GEOMETRY_ROOT="${EEF_GEOMETRY_ROOT:-$PACKAGE_ROOT/outputs/calibrated_geometry_inputs}"

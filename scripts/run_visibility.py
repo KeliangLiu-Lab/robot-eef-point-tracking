@@ -13,6 +13,9 @@ import sys
 
 
 def video_path(data_root: Path, prototype: dict) -> Path:
+    if "video" in prototype:
+        video = Path(prototype["video"])
+        return video if video.is_absolute() else data_root / video
     episode = int(prototype["episode"])
     return (
         data_root

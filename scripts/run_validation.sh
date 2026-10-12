@@ -3,7 +3,7 @@ set -euo pipefail
 
 PACKAGE_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$PACKAGE_ROOT"
-PYTHON="${PYTHON:-python}"
+PYTHON="${PYTHON:-python3}"
 GEOMETRY_ROOT="${EEF_FLANGE_GEOMETRY_ROOT:-$PACKAGE_ROOT/outputs/flange_geometry}"
 FINAL_ROOT="${EEF_FINAL_ROOT:-$PACKAGE_ROOT/outputs/eef_tracks}"
 
